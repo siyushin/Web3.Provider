@@ -4,7 +4,9 @@
   "description": "This README would normally document whatever steps are necessary to get your application up and running.",
   "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rm -rf ../dist && parcel build src/index.js -o elaphant.web3.provider.min.js -d ../dist",
+    "watch": "rm -rf ../dist && parcel watch src/index.js -o elaphant.web3.provider.min.js -d ../dist"
   },
   "repository": {
     "type": "git",
@@ -18,5 +20,12 @@
   ],
   "author": "Si Yushin",
   "license": "ISC",
-  "homepage": "https://bitbucket.org/johnny_jiang/elephant-web3-provider#readme"
+  "homepage": "https://bitbucket.org/johnny_jiang/elephant-web3-provider#readme",
+  "type": "module",
+  "dependencies": {
+    "web3-providers-http": "^1.2.11"
+  },
+  "devDependencies": {
+    "parcel-bundler": "^1.12.4"
+  }
 }
