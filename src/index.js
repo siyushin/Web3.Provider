@@ -18,26 +18,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 		this.appPublicKey = appPublicKey
 		this.developerDID = developerDID
 
-		if (!window.Web3) {
-			let script = document.createElement('script')
-			script.type = "text/javascript"
-			script.src = 'https://unpkg.com/web3@latest/dist/web3.min.js'
-			if (script.readyState) {
-				script.onreadystatechange = () => {
-					if (script.readyState == "loaded" || script.readyState == "complete") {
-						script.onreadystatechange = null;
-						this.setEthereum()
-					}
-				}
-			} else {
-				script.onload = () => {
-					this.setEthereum()
-				}
-			}
-			document.body.appendChild(script)
-		} else {
-			this.setEthereum()
-		}
+		this.setEthereum()
 	}
 
 	setEthereum() {
