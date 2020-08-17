@@ -1,29 +1,39 @@
-# README #
+# Elaphant Web3 Provider
 
-This README would normally document whatever steps are necessary to get your application up and running.
+## 测试用地址
 
-### What is this repository for? ###
+Elaphant Web3 Provider Javascript库地址：http://199y00.coding-pages.com/dist/elaphant.web3.provider.min.js 
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+## 接口说明
 
-### How do I get set up? ###
+```javascript
+let ElaProvider = new ElaphantWeb3Provider(rpcURL, appTitle, appID, appName, appPublicKey, developerDID)
+```
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+### 使用说明
 
-### Contribution guidelines ###
+1. 在以往使用Metamask等钱包的典型环境下，会进行如下判断：
 
-* Writing tests
-* Code review
-* Other guidelines
+```javascript
+if (typeof window.ethereum === 'undefined') {
+	// 当window.ethereum不存在时，就可以使用ElaphantWeb3Provider为Web3提供provider。
+	window.web3 = new Web3(new ElaphantWeb3Provider(
+		"https://mainrpc.elaeth.io",
+		"appTitle",
+		"appID",
+		"appName",
+		"appPublicKey",
+		"developerDID"
+	));
+}
+```
 
-### Who do I talk to? ###
+2. 然后可以象使用Metamask一样，先连接帐户。
 
-* Repo owner or admin
-* Other community or team contact
+```javascript
+window.ethereum.enable().then(() => {
+	console.log(ethereum.selectedAddress);
+})
+```
+
+此时Privoder会跳转到Elaphant Wallet去请求授权，回调后取得钱包帐户的ETH地址。 
