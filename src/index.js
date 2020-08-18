@@ -25,50 +25,98 @@ class ElaphantWeb3Provider extends HttpProvider {
 		window.ethereum = {
 			provider: this,
 			selectedAddress: '',
-
-			init: function () {
-				this.enable()
-			},
-
 			enable: function () {
-				let currentURL = window.location.href
-				let itsURL = new URL(currentURL)
-				let action = itsURL.searchParams.get('action')
-				if (action && action === 'auth') {
-					let data = itsURL.searchParams.get('Data')
-					let dataJson = JSON.parse(decodeURIComponent(data))
-					this.selectedAddress = dataJson.ETHAddress
-
-					return new Promise((resolve, reject) => {
-						return resolve(this.selectedAddress)
+				return new Promise((resolve, reject) => {
+					this.provider.authorise().then(address => {
+						this.selectedAddress = address
+						if (address === '') {
+							reject('')
+						} else {
+							resolve(address)
+						}
+					}).catch(err => {
+						console.error(err)
+						reject('')
 					})
-				} else {
-					itsURL.searchParams.set('action', 'auth')
-
-					let elaphantURL = "elaphant://identity?" +
-						"AppID=" + this.provider.appID +
-						"&AppName=" + encodeURIComponent(this.provider.appName) +
-						"&RandomNumber=" + Math.floor(Math.random() * 100000000) +
-						"&DID=" + this.provider.developerDID +
-						"&PublicKey=" + this.provider.appPublicKey +
-						"&ReturnUrl=" + encodeURIComponent(itsURL.toString()) +
-						"&RequestInfo=ELAAddress,BTCAddress,ETHAddress"
-					let url = "https://launch.elaphant.app/?appName=" + encodeURIComponent(this.provider.appTitle) +
-						"&appTitle=" + encodeURIComponent(this.provider.appTitle) +
-						"&autoRedirect=True&redirectURL=" + encodeURIComponent(elaphantURL)
-					window.location.href = url
-				}
+				})
+			},
+			request(payload) {
+				return new Promise((resolve, reject) => {
+					this.provider.send(payload).then(res => {
+						resolve(res)
+					}).catch(err => {
+						reject(err)
+					})
+				})
 			}
 		}
 	}
 
-	send(payload, callback) {
-		if (payload.method === 'eth_sendTransaction') {
-			return this.sendTransaction(payload.params)
-		}
+	authorise() {
+		let currentURL = window.location.href
+		let itsURL = new URL(currentURL)
+		let action = itsURL.searchParams.get('action')
+		if (action && action === 'auth') {
+			var data = ''
+			var dataJson = null
+			var err = null
+			try {
+				data = itsURL.searchParams.get('Data')
+				dataJson = JSON.parse(decodeURIComponent(data))
+				this.selectedAddress = dataJson.ETHAddress
+			} catch (error) {
+				err = error
+			}
 
-		super.send(payload, callback)
-		console.log('payload =', payload)
+			return new Promise((resolve, reject) => {
+				if (!this.selectedAddress || err) {
+					reject('')
+				} else {
+					resolve(this.selectedAddress)
+				}
+			})
+		} else {
+			itsURL.searchParams.set('action', 'auth')
+
+			let elaphantURL = "elaphant://identity?" +
+				"AppID=" + this.appID +
+				"&AppName=" + encodeURIComponent(this.appName) +
+				"&RandomNumber=" + Math.floor(Math.random() * 100000000) +
+				"&DID=" + this.developerDID +
+				"&PublicKey=" + this.appPublicKey +
+				"&ReturnUrl=" + encodeURIComponent(itsURL.toString()) +
+				"&RequestInfo=ELAAddress,BTCAddress,ETHAddress"
+			let url = "https://launch.elaphant.app/?appName=" + encodeURIComponent(this.appTitle) +
+				"&appTitle=" + encodeURIComponent(this.appTitle) +
+				"&autoRedirect=True&redirectURL=" + encodeURIComponent(elaphantURL)
+			window.location.href = url
+		}
+	}
+
+	send(payload, callback) {
+		switch (payload.method) {
+			case 'eth_sendTransaction':
+				this.sendTransaction(payload.params)
+				break
+
+			case 'eth_requestAccounts':
+				return new Promise((resolve, reject) => {
+					this.authorise().then(address => {
+						if (address === '') {
+							reject('')
+						} else {
+							resolve([address])
+						}
+					}).catch(err => {
+						console.error(err)
+						reject('')
+					})
+				})
+
+			default:
+				super.send(payload, callback)
+			// console.log('payload =', payload)
+		}
 	}
 
 	sendTransaction(args) {
