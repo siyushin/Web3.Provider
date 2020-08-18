@@ -1,6 +1,6 @@
-import HttpProvider from 'web3-providers-http'
+import Web3 from 'web3'
 
-class ElaphantWeb3Provider extends HttpProvider {
+class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 	constructor(rpcURL, appTitle, appID, appName, appPublicKey, developerDID) {
 		super(rpcURL, {
 			keepAlive: true,
