@@ -1,38 +1,51 @@
 # Elaphant Web3 Provider
 
-## 测试用地址
+## Build
 
-Elaphant Web3 Provider Javascript库地址：http://199y00.coding-pages.com/dist/elaphant.web3.provider.min.js 
+运行“npm run build”，然后在项目目录/dist里会生成最终js文件。
 
 ## 接口说明
 
-```javascript
-let ElaProvider = new ElaphantWeb3Provider(rpcURL, appTitle, appID, appName, appPublicKey, developerDID)
+在web中引用js文件后，用如下方法实例化provider:
+
+``` javascript
+let ElaProvider = ElaphantWeb3Provider.initWithParams(rpcURL, appTitle, appID, appName, appPublicKey, developerDID, randomNumber)
 ```
 
 ### 使用说明
 
 1. 在以往使用Metamask等钱包的典型环境下，会进行如下判断：
 
-```javascript
+``` javascript
 if (typeof window.ethereum === 'undefined') {
-	// 当window.ethereum不存在时，就可以使用ElaphantWeb3Provider为Web3提供provider。
-	window.web3 = new Web3(new ElaphantWeb3Provider(
-		"https://mainrpc.elaeth.io",
-		"appTitle",
-		"appID",
-		"appName",
-		"appPublicKey",
-		"developerDID"
-	));
+    // 当window.ethereum不存在时，就可以使用ElaphantWeb3Provider为Web3提供provider。
+    window.web3 = new Web3(ElaphantWeb3Provider.initWithParams(
+        "https://mainrpc.elaeth.io",
+        "appTitle",
+        "appID",
+        "appName",
+        "appPublicKey",
+        "developerDID",
+        12345
+    ));
 }
 ```
 
 2. 然后可以象使用Metamask一样，先连接帐户。
 
-```javascript
+``` javascript
 window.ethereum.enable().then(() => {
-	console.log(ethereum.selectedAddress);
+    console.log(window.ethereum.selectedAddress);
+})
+```
+
+同时也兼容为适配Metamask 8.0以上版的用法。
+
+``` javascript
+window.ethereum.request({
+    method: 'eth_requestAccounts'
+}).then(accounts => {
+    console.log(accounts[0]);
 })
 ```
 
