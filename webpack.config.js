@@ -5,6 +5,6 @@ module.exports = {
 	entry: './src/index.js',
 	output: {
 		filename: 'elaphant.web3.provider.min.js',
-		path: path.resolve(__dirname, '../dist'),
+		path: path.resolve(__dirname, './dist'),
 	},
 };

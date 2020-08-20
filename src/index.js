@@ -1,6 +1,10 @@
 import Web3 from 'web3'
 
 class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
+	/**
+	 * 用于在移动端向webview进行注入。参数为原生代码里定义的Provider配置对象。
+	 * @param {Object} embeddedConfig Provider的配置对象。
+	 */
 	static initWithConfig(embeddedConfig) {
 		let object = new ElaphantWeb3Provider(embeddedConfig.rpcUrl)
 		object.isEmbedded = true
@@ -10,7 +14,7 @@ class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 		return object
 	}
 
-	static initWithParams(rpcURL, appTitle, appID, appName, appPublicKey, developerDID) {
+	static initWithParams(rpcURL, appTitle, appID, appName, appPublicKey, developerDID, randomNumber) {
 		let object = new ElaphantWeb3Provider(rpcURL)
 		object.isEmbedded = false
 		object.appTitle = appTitle
@@ -18,6 +22,7 @@ class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 		object.appName = appName
 		object.appPublicKey = appPublicKey
 		object.developerDID = developerDID
+		object.randomNumber = randomNumber
 		object.callback = null
 		object.setEthereum()
 
@@ -107,7 +112,7 @@ class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 			let elaphantURL = "elaphant://identity?" +
 				"AppID=" + this.appID +
 				"&AppName=" + encodeURIComponent(this.appName) +
-				"&RandomNumber=" + Math.floor(Math.random() * 100000000) +
+				"&RandomNumber=" + this.randomNumber +
 				"&DID=" + this.developerDID +
 				"&PublicKey=" + this.appPublicKey +
 				"&ReturnUrl=" + encodeURIComponent(itsURL.toString()) +
