@@ -44,41 +44,51 @@ class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 	}
 
 	setEthereum() {
-		window.ethereum = {
-			provider: this,
-			selectedAddress: this.isEmbedded ? this.address : '',
-			enable: function () {
-				return new Promise((resolve, reject) => {
-					if (this.provider.isEmbedded) {
-						if (this.provider.address) {
-							this.selectedAddress = this.provider.address
-							resolve([this.selectedAddress])
-						} else {
-							reject([])
-						}
-					} else {
-						this.provider.authorise().then(address => {
-							this.selectedAddress = address
-							if (address === '') {
-								reject('')
+		if (!window.ethereum) {
+			window.ethereum = {
+				provider: this,
+				selectedAddress: this.isEmbedded ? this.address : '',
+				enable: function () {
+					return new Promise((resolve, reject) => {
+						if (this.provider.isEmbedded) {
+							if (this.provider.address) {
+								this.selectedAddress = this.provider.address
+								resolve([this.selectedAddress])
 							} else {
-								resolve(address)
+								reject([])
 							}
+						} else {
+							this.provider.authorise().then(address => {
+								this.selectedAddress = address
+								if (address === '') {
+									reject('')
+								} else {
+									resolve(address)
+								}
+							}).catch(err => {
+								console.error(err)
+								reject('')
+							})
+						}
+					})
+				},
+				request(payload, callback) {
+					if (callback) {
+						this.provider.send(payload).then(res => {
+							callback(null, res)
 						}).catch(err => {
-							console.error(err)
-							reject('')
+							callback(err, null)
+						})
+					} else {
+						return new Promise((resolve, reject) => {
+							this.provider.send(payload).then(res => {
+								resolve(res)
+							}).catch(err => {
+								reject(err)
+							})
 						})
 					}
-				})
-			},
-			request(payload) {
-				return new Promise((resolve, reject) => {
-					this.provider.send(payload).then(res => {
-						resolve(res)
-					}).catch(err => {
-						reject(err)
-					})
-				})
+				}
 			}
 		}
 	}
@@ -182,7 +192,6 @@ class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 
 			default:
 				super.send(payload, callback)
-			// console.log('payload =', payload)
 		}
 	}
 
