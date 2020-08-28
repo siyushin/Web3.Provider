@@ -2,13 +2,14 @@ import Web3 from 'web3'
 
 class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 	/**
-	 * 用于在移动端向webview进行注入。参数为原生代码里定义的Provider配置对象。
+	 * 用于在iOS移动端向webview进行注入。参数为原生代码里定义的Provider配置对象。
 	 * @param {Object} embeddedConfig Provider的配置对象。
 	 */
 	static initWithConfig(embeddedConfig) {
 		let object = new ElaphantWeb3Provider(embeddedConfig.rpcUrl)
 		object.isEmbedded = true
 		object.address = embeddedConfig.address
+		object.resCallback = null
 		object.setEthereum()
 
 		return object
@@ -23,7 +24,7 @@ class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 		object.appPublicKey = appPublicKey
 		object.developerDID = developerDID
 		object.randomNumber = randomNumber
-		object.callback = null
+		object.resCallback = null
 		object.setEthereum()
 
 		return object
@@ -61,24 +62,20 @@ class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 							this.provider.authorise().then(address => {
 								this.selectedAddress = address
 								if (address === '') {
-									reject('')
+									reject([])
 								} else {
-									resolve(address)
+									resolve([address])
 								}
 							}).catch(err => {
 								console.error(err)
-								reject('')
+								reject([])
 							})
 						}
 					})
 				},
 				request(payload, callback) {
 					if (callback) {
-						this.provider.send(payload).then(res => {
-							callback(null, res)
-						}).catch(err => {
-							callback(err, null)
-						})
+						this.provider.send(payload, callback)
 					} else {
 						return new Promise((resolve, reject) => {
 							this.provider.send(payload).then(res => {
@@ -135,8 +132,8 @@ class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 	}
 
 	send(payload, callback) {
-		if (this.isEmbedded) {
-			this.callback = callback
+		if (callback) {
+			this.resCallback = callback
 		}
 
 		switch (payload.method) {
@@ -146,25 +143,48 @@ class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 
 			case 'eth_requestAccounts':
 				if (this.isEmbedded) {
-					if (this.address) {
-						this.callback(null, this.address)
+					if (callback) {
+						if (this.address) {
+							callback(null, [this.address])
+						} else {
+							callback('NO ADDRESS!', [])
+						}
 					} else {
-						this.callback('NO ADDRESS!', null)
+						return new Promise((resolve, reject) => {
+							if (this.address) {
+								resolve([this.address])
+							} else {
+								reject([])
+							}
+						})
 					}
 				} else {
-					return new Promise((resolve, reject) => {
+					if (callback) {
 						this.authorise().then(address => {
 							if (address === '') {
-								reject('')
+								callback("NO ADDRESS!", [])
 							} else {
-								resolve([address])
+								callback(null, [address])
 							}
 						}).catch(err => {
-							console.error(err)
-							reject([])
+							callback(err, [])
 						})
-					})
+					} else {
+						return new Promise((resolve, reject) => {
+							this.authorise().then(address => {
+								if (address === '') {
+									reject([])
+								} else {
+									resolve([address])
+								}
+							}).catch(err => {
+								console.error(err)
+								reject([])
+							})
+						})
+					}
 				}
+				break
 
 			case 'personal_sign':
 				if (this.isEmbedded) {
@@ -234,10 +254,10 @@ class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 	}
 
 	sendResponse(id, result) {
-		if (this.isEmbedded && this.callback) {
-			this.callback(result)
+		if (this.isEmbedded && this.resCallback) {
+			this.resCallback(result)
 		}
-		this.callback = null
+		this.resCallback = null
 	}
 }
 
