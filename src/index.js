@@ -15,7 +15,18 @@ class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 		return object
 	}
 
-	static initWithParams(rpcURL, appTitle, appID, appName, appPublicKey, developerDID, randomNumber) {
+	/**
+	 * 用指定的Web App相关的参数去初始化一个Web3 Provider。
+	 * @param {String} rpcURL
+	 * @param {String} appTitle
+	 * @param {String} appID 
+	 * @param {String} appName 
+	 * @param {String} appPublicKey 
+	 * @param {String} developerDID 
+	 * @param {Number} randomNumber 
+	 * @param {String} accountAddress 如果已知钱包地址，可以在这里传入，则web不再需要频繁去请求用户钱包地址。
+	 */
+	static initWithParams(rpcURL, appTitle, appID, appName, appPublicKey, developerDID, randomNumber, accountAddress) {
 		let object = new ElaphantWeb3Provider(rpcURL)
 		object.isEmbedded = false
 		object.appTitle = appTitle
@@ -25,6 +36,7 @@ class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
 		object.developerDID = developerDID
 		object.randomNumber = randomNumber
 		object.resCallback = null
+		object.address = accountAddress ? accountAddress : ''
 		object.setEthereum()
 
 		return object
