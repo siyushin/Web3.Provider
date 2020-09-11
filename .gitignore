@@ -99,4 +99,4 @@ coverage.json
 *.swo
 *~
 .vscode/
-
+dist/

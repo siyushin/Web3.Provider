@@ -5,6 +5,7 @@ import FilterMgr from "./filter";
 import RPCServer from "./rpc";
 import Utils from "./utils";
 import IdMapping from "./id_mapping";
+import { reject } from "lodash";
 
 class TrustWeb3Provider {
   constructor(config) {
@@ -35,14 +36,6 @@ class TrustWeb3Provider {
   }
 
   enable() {
-    // this may be undefined somehow
-    // var that = this || window.ethereum;
-    // return that._sendAsync({
-    //   method: "eth_requestAccounts",
-    //   params: []
-    // }).then(result => {
-    //   return result.result;
-    // });
     return new Promise((resolve, reject) => {
       if (this.address) {
         this.selectedAddress = this.address
@@ -90,7 +83,13 @@ class TrustWeb3Provider {
   }
 
   request(payload) {
-    return this._sendAsync(payload)
+    return new Promise((resolve, reject) => {
+      this._sendAsync(payload).then(data => {
+        resolve(data.result)
+      }).catch(error => {
+        reject(error)
+      });
+    })
   }
 
   sendAsync(payload, callback) {
