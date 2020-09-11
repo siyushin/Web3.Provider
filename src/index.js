@@ -89,9 +89,9 @@ class TrustWeb3Provider {
     return response;
   }
 
-  // request(payload) {
-  //   return this._sendAsync(payload)
-  // }
+  request(payload) {
+    return this._sendAsync(payload)
+  }
 
   sendAsync(payload, callback) {
     if (Array.isArray(payload)) {
