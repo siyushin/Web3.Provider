@@ -275,3 +275,4 @@ class ElaphantWeb3Provider extends HttpProvider {
 
 window.ElaphantWeb3Provider = ElaphantWeb3Provider
 window.Trust = ElaphantWeb3Provider
+window.detectEthereumProvider = function () { return new Promise(function (resolve, reject) { if (window.web3.currentProvider) { resolve(window.web3.currentProvider); } else { reject(null); } }); };
