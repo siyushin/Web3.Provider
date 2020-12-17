@@ -1,6 +1,6 @@
-import Web3 from 'web3'
+import HttpProvider from "web3-providers-http"
 
-class ElaphantWeb3Provider extends Web3.providers.HttpProvider {
+class ElaphantWeb3Provider extends HttpProvider {
 	/**
 	 * 用于在iOS移动端向webview进行注入。参数为原生代码里定义的Provider配置对象。
 	 * @param {Object} embeddedConfig Provider的配置对象。
