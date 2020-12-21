@@ -144,22 +144,28 @@ class ElaphantWeb3Provider extends HttpProvider {
 	}
 
 	send(payload, callback) {
+		console.log("开始调用 send……", this, payload, payload.method)
+
 		if (callback) {
 			this.resCallback = callback
 		}
 
+		let jsBridge
+
 		switch (payload.method) {
 			case 'eth_sendTransaction':
-				this.sendTransaction(payload.params)
+				console.log("这是一个eth_sendTransaction交易。", payload.params)
+
+				this.sendTransaction(payload.params, payload.id)
 				break
 
 			case 'eth_requestAccounts':
 				if (this.isEmbedded) {
 					if (callback) {
 						if (this.address) {
-							callback(null, [this.address])
+							callback([this.address])
 						} else {
-							callback('NO ADDRESS!', [])
+							callback([])
 						}
 					} else {
 						return new Promise((resolve, reject) => {
@@ -200,7 +206,13 @@ class ElaphantWeb3Provider extends HttpProvider {
 
 			case 'personal_sign':
 				if (this.isEmbedded) {
-					window.webkit.messageHandlers['signPersonalMessage'].postMessage({
+					if (window.JsBridgeAndroid) {
+						jsBridge = window.JsBridgeAndroid
+					} else {
+						jsBridge = window.webkit.messageHandlers['signPersonalMessage']
+					}
+
+					jsBridge.postMessage({
 						name: 'signPersonalMessage',
 						object: payload.params,
 						id: 0
@@ -212,7 +224,13 @@ class ElaphantWeb3Provider extends HttpProvider {
 
 			case 'personal_ecRecover':
 				if (this.isEmbedded) {
-					window.webkit.messageHandlers['ecRecover'].postMessage({
+					if (window.JsBridgeAndroid) {
+						jsBridge = window.JsBridgeAndroid
+					} else {
+						jsBridge = window.webkit.messageHandlers['ecRecover']
+					}
+
+					jsBridge.postMessage({
 						name: 'ecRecover',
 						object: payload.params,
 						id: 0
@@ -227,13 +245,26 @@ class ElaphantWeb3Provider extends HttpProvider {
 		}
 	}
 
-	sendTransaction(args) {
+	sendTransaction(args, id) {
+		console.log("开始调用　sendTransaction", args)
+
 		if (this.isEmbedded) {
-			window.webkit.messageHandlers['signTransaction'].postMessage({
-				name: 'signPersonalMessage',
-				object: args,
-				id: 0
-			})
+			let jsBridge
+			if (window.JsBridgeAndroid) {
+				jsBridge = window.JsBridgeAndroid
+				jsBridge.postMessage(JSON.stringify({
+					name: 'signTransaction',
+					object: args[0],
+					id: id
+				}))
+			} else {
+				jsBridge = window.webkit.messageHandlers['signTransaction']
+				jsBridge.postMessage({
+					name: 'signTransaction',
+					object: args,
+					id: id
+				})
+			}
 		} else {
 			let returnUrl = new URL(window.location.href)
 			if (returnUrl.searchParams.get('action') === 'auth') {
