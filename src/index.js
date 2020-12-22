@@ -1,5 +1,7 @@
 import HttpProvider from "web3-providers-http"
 
+window.resCallback = null
+
 class ElaphantWeb3Provider extends HttpProvider {
 	/**
 	 * 用于在iOS移动端向webview进行注入。参数为原生代码里定义的Provider配置对象。
@@ -9,7 +11,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 		let object = new ElaphantWeb3Provider(embeddedConfig.rpcUrl)
 		object.isEmbedded = true
 		object.address = embeddedConfig.address
-		object.resCallback = null
+		window.resCallback = null
 		object.setEthereum()
 
 		return object
@@ -35,7 +37,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 		object.appPublicKey = appPublicKey
 		object.developerDID = developerDID
 		object.randomNumber = randomNumber
-		object.resCallback = null
+		window.resCallback = null
 		object.address = accountAddress ? accountAddress : ''
 		object.setEthereum()
 
@@ -60,7 +62,12 @@ class ElaphantWeb3Provider extends HttpProvider {
 		if (!window.ethereum) {
 			window.ethereum = {
 				provider: this,
+				isEmbedded: this.isEmbedded,
+				// resCallback: this.resCallback,
 				selectedAddress: this.isEmbedded ? this.address : '',
+				sendResponse: this.sendResponse,
+				_send: this._send,
+				rawSendWithinApp: this.rawSendWithinApp,
 				enable: function () {
 					return new Promise((resolve, reject) => {
 						if (this.provider.isEmbedded) {
@@ -144,28 +151,72 @@ class ElaphantWeb3Provider extends HttpProvider {
 	}
 
 	send(payload, callback) {
-		console.log("开始调用 send……", this, payload, payload.method)
+		console.log("开始调用 send……", this, payload, callback)
 
 		if (callback) {
-			this.resCallback = callback
+			window.resCallback = callback
+			this._send(payload)
+		} else {
+			return new Promise(resolve => {
+				window.resCallback = result => {
+					resolve(result)
+				}
+
+				this._send(payload)
+			})
 		}
+	}
 
+	rawSendWithinApp(payload) {
+		console.log("组装请求对象 rawSendWithinApp")
+		
 		let jsBridge
+		if (this.isEmbedded) {
+			const param = {
+				name: payload.method,
+				object: payload.params,
+				id: payload.id ? payload : new Date().getTime()
+			}
 
+			console.log("window.JsBridgeAndroid =", window.JsBridgeAndroid)
+
+			if (window.JsBridgeAndroid) {
+				jsBridge = window.JsBridgeAndroid
+				jsBridge.postMessage(JSON.stringify(param))
+
+				console.log("提交Android", JSON.stringify(param))
+			} else {
+				jsBridge = window.webkit.messageHandlers[payload.method]
+				jsBridge.postMessage(param)
+
+				console.log("提交iOS", param)
+			}
+		} else {
+			super.send(payload, window.resCallback)
+		}
+	}
+
+	_send(payload) {
+		let jsBridge
 		switch (payload.method) {
+			case "eth_getBalance": case "eth_call":
+				console.log("window.JsBridgeAndroid =", window.JsBridgeAndroid)
+				this.rawSendWithinApp(payload)
+				break
+
 			case 'eth_sendTransaction':
 				console.log("这是一个eth_sendTransaction交易。", payload.params)
 
 				this.sendTransaction(payload.params, payload.id)
 				break
 
-			case 'eth_requestAccounts':
+			case 'eth_requestAccounts': case "eth_accounts":
 				if (this.isEmbedded) {
-					if (callback) {
+					if (window.resCallback) {
 						if (this.address) {
-							callback([this.address])
+							window.resCallback([this.address])
 						} else {
-							callback([])
+							window.resCallback([])
 						}
 					} else {
 						return new Promise((resolve, reject) => {
@@ -177,15 +228,15 @@ class ElaphantWeb3Provider extends HttpProvider {
 						})
 					}
 				} else {
-					if (callback) {
+					if (window.resCallback) {
 						this.authorise().then(address => {
 							if (address === '') {
-								callback("NO ADDRESS!", [])
+								window.resCallback("NO ADDRESS!", [])
 							} else {
-								callback(null, [address])
+								window.resCallback(null, [address])
 							}
 						}).catch(err => {
-							callback(err, [])
+							window.resCallback(err, [])
 						})
 					} else {
 						return new Promise((resolve, reject) => {
@@ -218,7 +269,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 						id: 0
 					})
 				} else {
-					super.send(payload, callback)
+					super.send(payload, window.resCallback)
 				}
 				break
 
@@ -236,12 +287,32 @@ class ElaphantWeb3Provider extends HttpProvider {
 						id: 0
 					})
 				} else {
-					super.send(payload, callback)
+					super.send(payload, window.resCallback)
+				}
+				break
+
+			case "net_version":
+				if (this.isEmbedded) {
+					const param = {
+						name: 'net_version',
+						object: payload.params,
+						id: payload.id ? payload : 0
+					}
+
+					if (window.JsBridgeAndroid) {
+						jsBridge = window.JsBridgeAndroid
+						jsBridge.postMessage(JSON.stringify(param))
+					} else {
+						jsBridge = window.webkit.messageHandlers['net_version']
+						jsBridge.postMessage(param)
+					}
+				} else {
+					super.send(payload, window.resCallback)
 				}
 				break
 
 			default:
-				super.send(payload, callback)
+				super.send(payload, window.resCallback)
 		}
 	}
 
@@ -249,21 +320,19 @@ class ElaphantWeb3Provider extends HttpProvider {
 		console.log("开始调用　sendTransaction", args)
 
 		if (this.isEmbedded) {
+			const param = {
+				name: 'signTransaction',
+				object: args,
+				id: id
+			}
+
 			let jsBridge
 			if (window.JsBridgeAndroid) {
 				jsBridge = window.JsBridgeAndroid
-				jsBridge.postMessage(JSON.stringify({
-					name: 'signTransaction',
-					object: args[0],
-					id: id
-				}))
+				jsBridge.postMessage(JSON.stringify(param))
 			} else {
 				jsBridge = window.webkit.messageHandlers['signTransaction']
-				jsBridge.postMessage({
-					name: 'signTransaction',
-					object: args,
-					id: id
-				})
+				jsBridge.postMessage(param)
 			}
 		} else {
 			let returnUrl = new URL(window.location.href)
@@ -297,10 +366,12 @@ class ElaphantWeb3Provider extends HttpProvider {
 	}
 
 	sendResponse(id, result) {
-		if (this.isEmbedded && this.resCallback) {
-			this.resCallback(result)
+		console.log("调用 sendResponse", id, result, this.isEmbedded, window.resCallback)
+
+		if (this.isEmbedded && window.resCallback) {
+			window.resCallback(result)
 		}
-		this.resCallback = null
+		window.resCallback = null
 	}
 }
 
