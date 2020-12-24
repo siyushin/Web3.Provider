@@ -1,7 +1,7 @@
 import Web3 from "web3"
 import HttpProvider from "web3-providers-http"
 
-window.resCallback = null
+window.resCallback = window.resCallback ? window.resCallback : new Map()
 
 class ElaphantWeb3Provider extends HttpProvider {
 	/**
@@ -12,7 +12,6 @@ class ElaphantWeb3Provider extends HttpProvider {
 		let object = new ElaphantWeb3Provider(embeddedConfig.rpcUrl)
 		object.isEmbedded = true
 		object.address = embeddedConfig.address
-		window.resCallback = null
 		object.setEthereum()
 
 		return object
@@ -38,7 +37,6 @@ class ElaphantWeb3Provider extends HttpProvider {
 		object.appPublicKey = appPublicKey
 		object.developerDID = developerDID
 		object.randomNumber = randomNumber
-		window.resCallback = null
 		object.address = accountAddress ? accountAddress : ''
 		object.setEthereum()
 
@@ -64,7 +62,6 @@ class ElaphantWeb3Provider extends HttpProvider {
 			window.ethereum = {
 				provider: this,
 				isEmbedded: this.isEmbedded,
-				// resCallback: this.resCallback,
 				selectedAddress: this.isEmbedded ? this.address : '',
 				sendResponse: this.sendResponse,
 				_send: this._send,
@@ -154,32 +151,36 @@ class ElaphantWeb3Provider extends HttpProvider {
 	send(payload, callback) {
 		console.log("开始调用 send……", this, payload, callback)
 
+		const id = payload.id ? payload.id : new Date().getTime()
+
+		payload.id = id
+		payload.jsonrpc = "2.0"
+
 		if (callback) {
-			window.resCallback = callback
-			this._send(payload)
+			window.resCallback.set(id, callback)
+			this._send(payload, id)
 		} else {
 			return new Promise(resolve => {
-				window.resCallback = result => {
+				window.resCallback.set(id, result => {
 					resolve(result)
-				}
+				})
+				console.log("为没有回调的请求生成回调方法：", window.resCallback)
 
-				this._send(payload)
+				this._send(payload, id)
 			})
 		}
 	}
 
-	rawSendWithinApp(payload) {
-		console.log("组装请求对象 rawSendWithinApp")
+	rawSendWithinApp(payload, id) {
+		console.log("组装请求对象 rawSendWithinApp", payload, id)
 
 		let jsBridge
 		if (this.isEmbedded) {
 			const param = {
 				name: payload.method,
 				object: payload.params,
-				id: payload.id ? payload : new Date().getTime()
+				id: id
 			}
-
-			console.log("window.JsBridgeAndroid =", window.JsBridgeAndroid)
 
 			if (window.JsBridgeAndroid) {
 				jsBridge = window.JsBridgeAndroid
@@ -193,31 +194,35 @@ class ElaphantWeb3Provider extends HttpProvider {
 				console.log("提交iOS", param)
 			}
 		} else {
-			super.send(payload, window.resCallback)
+			super.send(payload, window.resCallback.get(id))
 		}
 	}
 
-	_send(payload) {
+	_send(payload, id) {
+		console.log("开始调用 _send……", payload, id)
+
 		let jsBridge
 		switch (payload.method) {
-			case "eth_getBalance": case "eth_call":
+			case "eth_getBalance":
+				console.log("这是一个 eth_getBalance 交易。", payload, id)
+
 				console.log("window.JsBridgeAndroid =", window.JsBridgeAndroid)
-				this.rawSendWithinApp(payload)
+				this.rawSendWithinApp(payload, id)
 				break
 
 			case 'eth_sendTransaction':
 				console.log("这是一个eth_sendTransaction交易。", payload.params)
 
-				this.sendTransaction(payload.params, payload.id)
+				this.sendTransaction(payload.params, id)
 				break
 
 			case 'eth_requestAccounts': case "eth_accounts":
 				if (this.isEmbedded) {
-					if (window.resCallback) {
+					if (window.resCallback.has(id)) {
 						if (this.address) {
-							window.resCallback([this.address])
+							window.resCallback.get(id)([this.address])
 						} else {
-							window.resCallback([])
+							window.resCallback.get(id)([])
 						}
 					} else {
 						return new Promise((resolve, reject) => {
@@ -229,15 +234,15 @@ class ElaphantWeb3Provider extends HttpProvider {
 						})
 					}
 				} else {
-					if (window.resCallback) {
+					if (window.resCallback.has(id)) {
 						this.authorise().then(address => {
 							if (address === '') {
-								window.resCallback("NO ADDRESS!", [])
+								window.resCallback.get(id)("NO ADDRESS!", [])
 							} else {
-								window.resCallback(null, [address])
+								window.resCallback.get(id)(null, [address])
 							}
 						}).catch(err => {
-							window.resCallback(err, [])
+							window.resCallback.get(id)(err, [])
 						})
 					} else {
 						return new Promise((resolve, reject) => {
@@ -270,7 +275,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 						id: 0
 					})
 				} else {
-					super.send(payload, window.resCallback)
+					super.send(payload, window.resCallback.get(id))
 				}
 				break
 
@@ -288,7 +293,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 						id: 0
 					})
 				} else {
-					super.send(payload, window.resCallback)
+					super.send(payload, window.resCallback.get(id))
 				}
 				break
 
@@ -297,7 +302,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 					const param = {
 						name: 'net_version',
 						object: payload.params,
-						id: payload.id ? payload : 0
+						id: id
 					}
 
 					if (window.JsBridgeAndroid) {
@@ -308,17 +313,19 @@ class ElaphantWeb3Provider extends HttpProvider {
 						jsBridge.postMessage(param)
 					}
 				} else {
-					super.send(payload, window.resCallback)
+					super.send(payload, window.resCallback.get(id))
 				}
 				break
 
 			default:
-				super.send(payload, window.resCallback)
+				console.log(payload.method, "交易被传给super……", id, window.resCallback.get(id))
+
+				super.send(payload, window.resCallback.get(id))
 		}
 	}
 
 	sendTransaction(args, id) {
-		console.log("开始调用　sendTransaction", args)
+		console.log("开始调用　sendTransaction", args, id)
 
 		if (this.isEmbedded) {
 			const param = {
@@ -367,12 +374,12 @@ class ElaphantWeb3Provider extends HttpProvider {
 	}
 
 	sendResponse(id, result) {
-		console.log("调用 sendResponse", id, result, this.isEmbedded, window.resCallback)
+		console.log("调用 sendResponse", id, result, this.isEmbedded, window.resCallback.get(id), window.resCallback)
 
-		if (this.isEmbedded && window.resCallback) {
-			window.resCallback(result)
+		if (this.isEmbedded && window.resCallback.has(id)) {
+			window.resCallback.get(id)(result)
+			window.resCallback.delete(id)
 		}
-		window.resCallback = null
 	}
 }
 
