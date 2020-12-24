@@ -1,3 +1,4 @@
+import Web3 from "web3"
 import HttpProvider from "web3-providers-http"
 
 window.resCallback = null
@@ -169,7 +170,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 
 	rawSendWithinApp(payload) {
 		console.log("组装请求对象 rawSendWithinApp")
-		
+
 		let jsBridge
 		if (this.isEmbedded) {
 			const param = {
@@ -375,6 +376,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 	}
 }
 
+window.Web3 = Web3
 window.ElaphantWeb3Provider = ElaphantWeb3Provider
 window.Trust = ElaphantWeb3Provider
 window.detectEthereumProvider = function () { return new Promise(function (resolve, reject) { if (window.web3.currentProvider) { resolve(window.web3.currentProvider); } else { reject(null); } }); };
