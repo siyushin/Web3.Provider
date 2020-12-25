@@ -193,6 +193,8 @@ class ElaphantWeb3Provider extends HttpProvider {
 						} else {
 							resolve(result)
 						}
+
+						window.resCallback.delete(id)
 					})
 
 					console.log("为没有回调的请求生成回调方法：", window.resCallback)
