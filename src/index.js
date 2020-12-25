@@ -163,13 +163,15 @@ class ElaphantWeb3Provider extends HttpProvider {
 			window.resCallback.set(id, callback)
 			this._send(payload, id)
 		} else {
-			if (payload.method === "eth_getBalance" ||
-				payload.method === "eth_sendTransaction" ||
-				payload.method === "eth_requestAccounts" ||
-				payload.method === "eth_accounts" ||
-				payload.method === "personal_sign" ||
-				payload.method === "personal_ecRecover" ||
-				payload.method === "net_version") {
+			if (
+				payload.method === "eth_getBalance"
+				|| payload.method === "eth_sendTransaction"
+				|| payload.method === "eth_requestAccounts"
+				|| payload.method === "personal_sign"
+				|| payload.method === "personal_ecRecover"
+				// || payload.method === "eth_accounts"
+				// || payload.method === "net_version"
+			) {
 				return new Promise(resolve => {
 					window.resCallback.set(id, result => {
 						console.log("最终回调到js的参数：", result)
@@ -249,7 +251,44 @@ class ElaphantWeb3Provider extends HttpProvider {
 				this.sendTransaction(payload.params, id)
 				break
 
-			case 'eth_requestAccounts': case "eth_accounts":
+			case "eth_accounts":
+				if (this.isEmbedded) {
+					const foo = window.resCallback.get(id)
+					if (this.address) {
+						if (foo.length === 1) {
+							foo([this.address])
+						} else {
+							foo(null, {
+								id: id,
+								jsonrpc: "2.0",
+								result: [this.address]
+							})
+						}
+					} else {
+						if (foo.length === 1) {
+							foo([])
+						} else {
+							foo("NO ADDRESS", {
+								id: id,
+								jsonrpc: "2.0",
+								result: []
+							})
+						}
+					}
+				} else {
+					this.authorise().then(address => {
+						if (address === '') {
+							window.resCallback.get(id)("NO ADDRESS!", [])
+						} else {
+							window.resCallback.get(id)(null, [address])
+						}
+					}).catch(err => {
+						window.resCallback.get(id)(err, [])
+					})
+				}
+				break
+
+			case 'eth_requestAccounts':
 				if (this.isEmbedded) {
 					if (window.resCallback.has(id)) {
 						if (this.address) {
@@ -330,28 +369,10 @@ class ElaphantWeb3Provider extends HttpProvider {
 				}
 				break
 
-			case "net_version":
-				if (this.isEmbedded) {
-					const param = {
-						name: 'net_version',
-						object: payload.params,
-						id: id
-					}
-
-					if (window.JsBridgeAndroid) {
-						jsBridge = window.JsBridgeAndroid
-						jsBridge.postMessage(JSON.stringify(param))
-					} else {
-						jsBridge = window.webkit.messageHandlers['net_version']
-						jsBridge.postMessage(param)
-					}
-				} else {
-					super.send(payload, window.resCallback.get(id))
-				}
-				break
-
 			default:
-				this.checkPayload(payload.params[0])
+				if (payload.params && payload.params.length > 0 && typeof payload.params[0] === "object") {
+					this.checkPayload(payload.params[0])
+				}
 
 				console.log(payload.method, "↑↑↑↑↑↑↑↑↑↑交易被传给super……", payload)
 
