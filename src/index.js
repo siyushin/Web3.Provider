@@ -163,16 +163,42 @@ class ElaphantWeb3Provider extends HttpProvider {
 			window.resCallback.set(id, callback)
 			this._send(payload, id)
 		} else {
-			return new Promise(resolve => {
-				window.resCallback.set(id, result => {
-					console.log("最终回调到js的参数：", result)
+			if (payload.method === "eth_getBalance" ||
+				payload.method === "eth_sendTransaction" ||
+				payload.method === "eth_requestAccounts" ||
+				payload.method === "eth_accounts" ||
+				payload.method === "personal_sign" ||
+				payload.method === "personal_ecRecover" ||
+				payload.method === "net_version") {
+				return new Promise(resolve => {
+					window.resCallback.set(id, result => {
+						console.log("最终回调到js的参数：", result)
+						resolve(result)
+					})
 
-					resolve(result)
+					console.log("为没有回调的请求生成回调方法：", window.resCallback)
+					this._send(payload, id)
 				})
-				console.log("为没有回调的请求生成回调方法：", window.resCallback)
+			} else {
+				return new Promise(resolve => {
+					window.resCallback.set(id, (error, result) => {
+						if (error) {
+							window.resCallback.delete(id)
+							return console.error("RPC返回错误：", error)
+						}
 
-				this._send(payload, id)
-			})
+						console.log("最终回调到js的参数：", result)
+						if (result.result) {
+							resolve(result.result)
+						} else {
+							resolve(result)
+						}
+					})
+
+					console.log("为没有回调的请求生成回调方法：", window.resCallback)
+					this._send(payload, id)
+				})
+			}
 		}
 	}
 
