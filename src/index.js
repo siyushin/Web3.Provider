@@ -50,10 +50,12 @@ class ElaphantWeb3Provider extends HttpProvider {
 				keepAlive: true,
 				withCredentials: false,
 				timeout: 20000,
-				headers: [{
-					name: 'Access-Control-Allow-Origin',
-					value: '*'
-				}]
+				reconnect: {
+					auto: true,
+					delay: 5000,
+					maxAttempts: 5,
+					onTimeout: false
+				}
 			})
 	}
 
@@ -66,6 +68,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 				sendResponse: this.sendResponse,
 				_send: this._send,
 				rawSendWithinApp: this.rawSendWithinApp,
+				checkPayload: this.checkPayload,
 				enable: function () {
 					return new Promise((resolve, reject) => {
 						if (this.provider.isEmbedded) {
@@ -162,6 +165,8 @@ class ElaphantWeb3Provider extends HttpProvider {
 		} else {
 			return new Promise(resolve => {
 				window.resCallback.set(id, result => {
+					console.log("最终回调到js的参数：", result)
+
 					resolve(result)
 				})
 				console.log("为没有回调的请求生成回调方法：", window.resCallback)
@@ -318,9 +323,25 @@ class ElaphantWeb3Provider extends HttpProvider {
 				break
 
 			default:
-				console.log(payload.method, "交易被传给super……", id, window.resCallback.get(id))
+				this.checkPayload(payload.params[0])
+
+				console.log(payload.method, "↑↑↑↑↑↑↑↑↑↑交易被传给super……", payload)
 
 				super.send(payload, window.resCallback.get(id))
+		}
+	}
+
+	checkPayload(payload) {
+		if (!payload.from || payload.from === "") {
+			payload.from = this.address;
+		}
+
+		if (!payload.gas) {
+			delete payload["gas"]
+		}
+
+		if (!payload.gasPrice) {
+			delete payload["gasPrice"]
 		}
 	}
 
