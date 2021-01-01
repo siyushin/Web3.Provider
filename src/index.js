@@ -62,6 +62,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 	setEthereum() {
 		if (!window.ethereum) {
 			window.ethereum = {
+				isMetamask: true,
 				provider: this,
 				isEmbedded: this.isEmbedded,
 				selectedAddress: this.isEmbedded ? this.address : '',
