@@ -2,6 +2,7 @@ import Web3 from "web3"
 import HttpProvider from "web3-providers-http"
 
 window.resCallback = window.resCallback ? window.resCallback : new Map()
+window.eventHandlers = window.eventHandlers ? window.eventHandlers : new Map()
 
 class ElaphantWeb3Provider extends HttpProvider {
 	/**
@@ -44,25 +45,35 @@ class ElaphantWeb3Provider extends HttpProvider {
 	}
 
 	constructor(rpcURL) {
-		super(
-			rpcURL,
-			{
-				keepAlive: true,
-				withCredentials: false,
-				timeout: 20000,
-				reconnect: {
-					auto: true,
-					delay: 5000,
-					maxAttempts: 5,
-					onTimeout: false
-				}
-			})
+		super(rpcURL, {
+			keepAlive: true,
+			withCredentials: false,
+			timeout: 20000,
+			reconnect: {
+				auto: true,
+				delay: 5000,
+				maxAttempts: 5,
+				onTimeout: false
+			}
+		})
+
+		this.isMetamask = true
+		this.autoRefreshOnNetworkChange = false
+		this.chainId = 20
+
+		setTimeout(() => {
+			if (window.eventHandlers.has("connect")) {
+				window.eventHandlers.get("connect")()
+			}
+		}, 5000);
 	}
 
 	setEthereum() {
 		if (!window.ethereum) {
 			window.ethereum = {
 				isMetamask: true,
+				autoRefreshOnNetworkChange: false,
+				chainId: 20,
 				provider: this,
 				isEmbedded: this.isEmbedded,
 				selectedAddress: this.isEmbedded ? this.address : '',
@@ -70,6 +81,9 @@ class ElaphantWeb3Provider extends HttpProvider {
 				_send: this._send,
 				rawSendWithinApp: this.rawSendWithinApp,
 				checkPayload: this.checkPayload,
+				on: this.on,
+				isConnected: this.isConnected,
+				asyncDeleteCallback: this.asyncDeleteCallback,
 				enable: function () {
 					return new Promise((resolve, reject) => {
 						if (this.provider.isEmbedded) {
@@ -95,6 +109,8 @@ class ElaphantWeb3Provider extends HttpProvider {
 					})
 				},
 				request(payload, callback) {
+					console.log("调用request", payload, callback)
+
 					if (callback) {
 						this.provider.send(payload, callback)
 					} else {
@@ -109,6 +125,26 @@ class ElaphantWeb3Provider extends HttpProvider {
 				}
 			}
 		}
+	}
+
+	on(event, handler) {
+		// case "connect":
+		// 	case "message":
+		// 	case "data":
+		// 	case "error":
+		// 	case "disconnect":
+		// 	case "chainChanged":
+		// 	case "accountsChanged":
+		// 	case "close":
+		// 	case "networkChanged":
+		if (handler) {
+			window.eventHandlers.set(event, handler)
+		}
+		console.log("注册了事件监听器。", event, window.eventHandlers)
+	}
+
+	isConnected() {
+		return true
 	}
 
 	authorise() {
@@ -170,6 +206,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 				|| payload.method === "eth_requestAccounts"
 				|| payload.method === "personal_sign"
 				|| payload.method === "personal_ecRecover"
+				|| payload.method === "eth_chainId"
 				// || payload.method === "eth_accounts"
 				// || payload.method === "net_version"
 			) {
@@ -186,8 +223,12 @@ class ElaphantWeb3Provider extends HttpProvider {
 				return new Promise(resolve => {
 					window.resCallback.set(id, (error, result) => {
 						if (error) {
-							window.resCallback.delete(id)
-							return console.error("RPC返回错误：", error)
+							this.asyncDeleteCallback(id)
+							return console.error("RPC返回错误：", error, result)
+						}
+
+						if (window.eventHandlers.has("data")) {
+							window.eventHandlers.get("data")(result)
 						}
 
 						console.log("最终回调到js的参数：", result)
@@ -197,7 +238,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 							resolve(result)
 						}
 
-						window.resCallback.delete(id)
+						this.asyncDeleteCallback(id)
 					})
 
 					console.log("为没有回调的请求生成回调方法：", window.resCallback)
@@ -239,6 +280,15 @@ class ElaphantWeb3Provider extends HttpProvider {
 
 		let jsBridge
 		switch (payload.method) {
+			case "eth_chainId":
+				this.sendResponse(id, this.chainId)
+				// {
+				// 	id: id,
+				// 	jsonrpc: "2.0",
+				// 	result: "0x" + this.chainId.toString(16)
+				// }
+				break;
+
 			case "eth_getBalance":
 				console.log("这是一个 eth_getBalance 交易。", payload, id)
 
@@ -285,6 +335,8 @@ class ElaphantWeb3Provider extends HttpProvider {
 						}
 					}).catch(err => {
 						window.resCallback.get(id)(err, [])
+					}).finally(() => {
+						this.asyncDeleteCallback(id)
 					})
 				}
 				break
@@ -297,6 +349,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 						} else {
 							window.resCallback.get(id)([])
 						}
+						this.asyncDeleteCallback(id)
 					} else {
 						return new Promise((resolve, reject) => {
 							if (this.address) {
@@ -316,6 +369,8 @@ class ElaphantWeb3Provider extends HttpProvider {
 							}
 						}).catch(err => {
 							window.resCallback.get(id)(err, [])
+						}).finally(() => {
+							this.asyncDeleteCallback(id)
 						})
 					} else {
 						return new Promise((resolve, reject) => {
@@ -449,8 +504,16 @@ class ElaphantWeb3Provider extends HttpProvider {
 
 		if (this.isEmbedded && window.resCallback.has(id)) {
 			window.resCallback.get(id)(result)
-			window.resCallback.delete(id)
+			this.asyncDeleteCallback(id)
 		}
+	}
+
+	asyncDeleteCallback(id) {
+		setTimeout(() => {
+			if (window.resCallback.has(id)) {
+				window.resCallback.delete(id)
+			}
+		}, 10000);
 	}
 }
 
