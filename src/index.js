@@ -13,6 +13,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 		let object = new ElaphantWeb3Provider(embeddedConfig.rpcUrl)
 		object.isEmbedded = true
 		object.address = embeddedConfig.address
+		object.chainId = embeddedConfig.chainId
 		object.setEthereum()
 
 		return object
@@ -39,6 +40,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 		object.developerDID = developerDID
 		object.randomNumber = randomNumber
 		object.address = accountAddress ? accountAddress : ''
+		object.chainId = embeddedConfig.chainId
 		object.setEthereum()
 
 		return object
@@ -71,24 +73,32 @@ class ElaphantWeb3Provider extends HttpProvider {
 	setEthereum() {
 		if (!window.ethereum) {
 			window.ethereum = {
-				isMetamask: true,
-				autoRefreshOnNetworkChange: false,
-				chainId: 20,
+				...this,
 				provider: this,
-				isEmbedded: this.isEmbedded,
 				selectedAddress: this.isEmbedded ? this.address : '',
-				sendResponse: this.sendResponse,
-				_send: this._send,
-				rawSendWithinApp: this.rawSendWithinApp,
-				checkPayload: this.checkPayload,
+				// isMetamask: true,
+				// autoRefreshOnNetworkChange: false,
+				// chainId: 20,
+				// isEmbedded: this.isEmbedded,
+				// sendResponse: this.sendResponse,
+				// _send: this._send,
+				// rawSendWithinApp: this.rawSendWithinApp,
+				// checkPayload: this.checkPayload,
+				// isConnected: this.isConnected,
+				// asyncDeleteCallback: this.asyncDeleteCallback,
 				on: this.on,
-				isConnected: this.isConnected,
-				asyncDeleteCallback: this.asyncDeleteCallback,
 				enable: function () {
+					console.log("调用window.ethereum.enable()")
+
 					return new Promise((resolve, reject) => {
 						if (this.provider.isEmbedded) {
 							if (this.provider.address) {
 								this.selectedAddress = this.provider.address
+
+								if (window.eventHandlers.has("connect")) {
+									window.eventHandlers.get("connect")()
+								}
+
 								resolve([this.selectedAddress])
 							} else {
 								reject([])
@@ -99,17 +109,26 @@ class ElaphantWeb3Provider extends HttpProvider {
 								if (address === '') {
 									reject([])
 								} else {
+									if (window.eventHandlers.has("connect")) {
+										window.eventHandlers.get("connect")()
+									}
+
 									resolve([address])
 								}
 							}).catch(err => {
 								console.error(err)
+
+								if (window.eventHandlers.has("error")) {
+									window.eventHandlers.get("error")(err)
+								}
+
 								reject([])
 							})
 						}
 					})
 				},
 				request(payload, callback) {
-					console.log("调用request", payload, callback)
+					console.log("调用window.ethereum.request()", payload, callback)
 
 					if (callback) {
 						this.provider.send(payload, callback)
@@ -122,13 +141,29 @@ class ElaphantWeb3Provider extends HttpProvider {
 							})
 						})
 					}
-				}
+				},
+				send: function (method, callback) {
+					console.log("调用window.ethereum.send()", method, callback)
+					console.log("method参数是", typeof method)
+
+					if (typeof method === "string") {
+						this.provider.send({
+							method: method,
+							params: []
+						}, callback)
+					} else {
+						this.provider.send(method, callback)
+					}
+				},
+				sendAsync: function (a, b) {
+					console.log("调用window.ethereum.sendAsync()", a, b)
+				},
 			}
 		}
 	}
 
 	on(event, handler) {
-		// case "connect":
+		//  case "connect":
 		// 	case "message":
 		// 	case "data":
 		// 	case "error":
@@ -192,9 +227,11 @@ class ElaphantWeb3Provider extends HttpProvider {
 		console.log("开始调用 send……", this, payload, callback)
 
 		const id = payload.id ? payload.id : new Date().getTime()
+		const params = payload.params ? payload.params : []
 
 		payload.id = id
 		payload.jsonrpc = "2.0"
+		payload.params = params
 
 		if (callback) {
 			window.resCallback.set(id, callback)
@@ -223,7 +260,12 @@ class ElaphantWeb3Provider extends HttpProvider {
 				return new Promise(resolve => {
 					window.resCallback.set(id, (error, result) => {
 						if (error) {
+							if (window.eventHandlers.has("error")) {
+								window.eventHandlers.get("error")(error)
+							}
+
 							this.asyncDeleteCallback(id)
+
 							return console.error("RPC返回错误：", error, result)
 						}
 
@@ -281,7 +323,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 		let jsBridge
 		switch (payload.method) {
 			case "eth_chainId":
-				this.sendResponse(id, this.chainId)
+				this.sendResponse(id, "0x" + this.chainId.toString(16))
 				// {
 				// 	id: id,
 				// 	jsonrpc: "2.0",
@@ -382,6 +424,11 @@ class ElaphantWeb3Provider extends HttpProvider {
 								}
 							}).catch(err => {
 								console.error(err)
+
+								if (window.eventHandlers.has("error")) {
+									window.eventHandlers.get("error")(err)
+								}
+
 								reject([])
 							})
 						})
@@ -437,9 +484,9 @@ class ElaphantWeb3Provider extends HttpProvider {
 	}
 
 	checkPayload(payload) {
-		if (!payload.from || payload.from === "") {
-			payload.from = this.address;
-		}
+		// if (!payload.from || payload.from === "") {
+		// 	payload.from = this.address;
+		// }
 
 		if (!payload.gas) {
 			delete payload["gas"]
