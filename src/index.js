@@ -76,16 +76,16 @@ class ElaphantWeb3Provider extends HttpProvider {
 				...this,
 				provider: this,
 				selectedAddress: this.isEmbedded ? this.address : '',
+				sendResponse: this.sendResponse,
+				asyncDeleteCallback: this.asyncDeleteCallback,
+				rawSendWithinApp: this.rawSendWithinApp,
+				checkPayload: this.checkPayload,
+				isConnected: this.isConnected,
+				_send: this._send,
 				// isMetamask: true,
 				// autoRefreshOnNetworkChange: false,
 				// chainId: 20,
 				// isEmbedded: this.isEmbedded,
-				// sendResponse: this.sendResponse,
-				// _send: this._send,
-				// rawSendWithinApp: this.rawSendWithinApp,
-				// checkPayload: this.checkPayload,
-				// isConnected: this.isConnected,
-				// asyncDeleteCallback: this.asyncDeleteCallback,
 				on: this.on,
 				enable: function () {
 					console.log("调用window.ethereum.enable()")
@@ -155,8 +155,9 @@ class ElaphantWeb3Provider extends HttpProvider {
 						this.provider.send(method, callback)
 					}
 				},
-				sendAsync: function (a, b) {
-					console.log("调用window.ethereum.sendAsync()", a, b)
+				sendAsync: function (payload, callback) {
+					console.log("调用window.ethereum.sendAsync()", payload, callback)
+					this.send(payload, callback)
 				},
 			}
 		}
@@ -175,7 +176,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 		if (handler) {
 			window.eventHandlers.set(event, handler)
 		}
-		console.log("注册了事件监听器。", event, window.eventHandlers)
+		console.log("注册了事件监听器。", event, handler)
 	}
 
 	isConnected() {
@@ -233,6 +234,8 @@ class ElaphantWeb3Provider extends HttpProvider {
 		payload.jsonrpc = "2.0"
 		payload.params = params
 
+		console.log("修正参数：", payload)
+
 		if (callback) {
 			window.resCallback.set(id, callback)
 			this._send(payload, id)
@@ -269,9 +272,9 @@ class ElaphantWeb3Provider extends HttpProvider {
 							return console.error("RPC返回错误：", error, result)
 						}
 
-						if (window.eventHandlers.has("data")) {
-							window.eventHandlers.get("data")(result)
-						}
+						// if (window.eventHandlers.has("data")) {
+						// 	window.eventHandlers.get("data")(result)
+						// }
 
 						console.log("最终回调到js的参数：", result)
 						if (result.result) {
@@ -345,6 +348,8 @@ class ElaphantWeb3Provider extends HttpProvider {
 				break
 
 			case "eth_accounts":
+				console.log("开始调用 eth_accounts：", this.address, this.isEmbedded, id, window.resCallback.get(id).length)
+
 				if (this.isEmbedded) {
 					const foo = window.resCallback.get(id)
 					if (this.address) {
@@ -477,7 +482,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 					this.checkPayload(payload.params[0])
 				}
 
-				console.log(payload.method, "↑↑↑↑↑↑↑↑↑↑交易被传给super……", payload)
+				console.log(payload.method, "↑↑↑↑↑↑↑↑↑↑交易被传给super……", payload, window.resCallback.get(id))
 
 				super.send(payload, window.resCallback.get(id))
 		}
