@@ -173,7 +173,17 @@ class ElaphantWeb3Provider extends HttpProvider {
 		// 	case "accountsChanged":
 		// 	case "close":
 		// 	case "networkChanged":
-		if (handler) {
+		if (
+			handler === "connect"
+			|| handler === "message"
+			|| handler === "data"
+			|| handler === "error"
+			|| handler === "disconnect"
+			|| handler === "chainChanged"
+			|| handler === "accountsChanged"
+			|| handler === "close"
+			|| handler === "networkChanged"
+		) {
 			window.eventHandlers.set(event, handler)
 		}
 		console.log("注册了事件监听器。", event, handler)
