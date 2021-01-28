@@ -321,9 +321,9 @@ class ElaphantWeb3Provider extends HttpProvider {
 				console.log("提交Android", JSON.stringify(param))
 			} else {
 				jsBridge = window.webkit.messageHandlers[payload.method]
-				jsBridge.postMessage(param)
+				jsBridge.postMessage(JSON.stringify(param))
 
-				console.log("提交iOS", param)
+				console.log("提交iOS", JSON.stringify(param))
 			}
 		} else {
 			super.send(payload, window.resCallback.get(id))
