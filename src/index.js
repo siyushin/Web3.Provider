@@ -71,96 +71,96 @@ class ElaphantWeb3Provider extends HttpProvider {
 	}
 
 	setEthereum() {
-		if (!window.ethereum) {
-			window.ethereum = {
-				...this,
-				provider: this,
-				selectedAddress: this.isEmbedded ? this.address : '',
-				sendResponse: this.sendResponse,
-				asyncDeleteCallback: this.asyncDeleteCallback,
-				rawSendWithinApp: this.rawSendWithinApp,
-				checkPayload: this.checkPayload,
-				isConnected: this.isConnected,
-				_send: this._send,
-				// isMetamask: true,
-				// autoRefreshOnNetworkChange: false,
-				// chainId: 20,
-				// isEmbedded: this.isEmbedded,
-				on: this.on,
-				enable: function () {
-					console.log("调用window.ethereum.enable()")
+		// if (!window.ethereum) {
+		window.ethereum = {
+			...this,
+			provider: this,
+			selectedAddress: this.isEmbedded ? this.address : '',
+			sendResponse: this.sendResponse,
+			asyncDeleteCallback: this.asyncDeleteCallback,
+			rawSendWithinApp: this.rawSendWithinApp,
+			checkPayload: this.checkPayload,
+			isConnected: this.isConnected,
+			_send: this._send,
+			// isMetamask: true,
+			// autoRefreshOnNetworkChange: false,
+			// chainId: 20,
+			// isEmbedded: this.isEmbedded,
+			on: this.on,
+			enable: function () {
+				console.log("调用window.ethereum.enable()")
 
-					return new Promise((resolve, reject) => {
-						if (this.provider.isEmbedded) {
-							if (this.provider.address) {
-								this.selectedAddress = this.provider.address
+				return new Promise((resolve, reject) => {
+					if (this.provider.isEmbedded) {
+						if (this.provider.address) {
+							this.selectedAddress = this.provider.address
 
+							if (window.eventHandlers.has("connect")) {
+								window.eventHandlers.get("connect")()
+							}
+
+							resolve([this.selectedAddress])
+						} else {
+							reject([])
+						}
+					} else {
+						this.provider.authorise().then(address => {
+							this.selectedAddress = address
+							if (address === '') {
+								reject([])
+							} else {
 								if (window.eventHandlers.has("connect")) {
 									window.eventHandlers.get("connect")()
 								}
 
-								resolve([this.selectedAddress])
-							} else {
-								reject([])
+								resolve([address])
 							}
-						} else {
-							this.provider.authorise().then(address => {
-								this.selectedAddress = address
-								if (address === '') {
-									reject([])
-								} else {
-									if (window.eventHandlers.has("connect")) {
-										window.eventHandlers.get("connect")()
-									}
+						}).catch(err => {
+							console.error(err)
 
-									resolve([address])
-								}
-							}).catch(err => {
-								console.error(err)
+							if (window.eventHandlers.has("error")) {
+								window.eventHandlers.get("error")(err)
+							}
 
-								if (window.eventHandlers.has("error")) {
-									window.eventHandlers.get("error")(err)
-								}
-
-								reject([])
-							})
-						}
-					})
-				},
-				request(payload, callback) {
-					console.log("调用window.ethereum.request()", payload, callback)
-
-					if (callback) {
-						this.provider.send(payload, callback)
-					} else {
-						return new Promise((resolve, reject) => {
-							this.provider.send(payload).then(res => {
-								resolve(res)
-							}).catch(err => {
-								reject(err)
-							})
+							reject([])
 						})
 					}
-				},
-				send: function (method, callback) {
-					console.log("调用window.ethereum.send()", method, callback)
-					console.log("method参数是", typeof method)
+				})
+			},
+			request(payload, callback) {
+				console.log("调用window.ethereum.request()", payload, callback)
 
-					if (typeof method === "string") {
-						this.provider.send({
-							method: method,
-							params: []
-						}, callback)
-					} else {
-						this.provider.send(method, callback)
-					}
-				},
-				sendAsync: function (payload, callback) {
-					console.log("调用window.ethereum.sendAsync()", payload, callback)
-					this.send(payload, callback)
-				},
-			}
+				if (callback) {
+					this.provider.send(payload, callback)
+				} else {
+					return new Promise((resolve, reject) => {
+						this.provider.send(payload).then(res => {
+							resolve(res)
+						}).catch(err => {
+							reject(err)
+						})
+					})
+				}
+			},
+			send: function (method, callback) {
+				console.log("调用window.ethereum.send()", method, callback)
+				console.log("method参数是", typeof method)
+
+				if (typeof method === "string") {
+					this.provider.send({
+						method: method,
+						params: []
+					}, callback)
+				} else {
+					this.provider.send(method, callback)
+				}
+			},
+			sendAsync: function (payload, callback) {
+				console.log("调用window.ethereum.sendAsync()", payload, callback)
+				this.send(payload, callback)
+			},
 		}
+		// }
 	}
 
 	on(event, handler) {
@@ -528,7 +528,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 				jsBridge.postMessage(JSON.stringify(param))
 			} else {
 				jsBridge = window.webkit.messageHandlers['signTransaction']
-				jsBridge.postMessage(param)
+				jsBridge.postMessage(JSON.stringify(param))
 			}
 		} else {
 			let returnUrl = new URL(window.location.href)
