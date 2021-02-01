@@ -8,13 +8,17 @@ class ElaphantWeb3Provider extends HttpProvider {
 	/**
 	 * 用于在iOS移动端向webview进行注入。参数为原生代码里定义的Provider配置对象。
 	 * @param {Object} embeddedConfig Provider的配置对象。
+	 * @param {Boolean} ignoreEthereum 是否重置window.ethereum对象。
 	 */
-	static initWithConfig(embeddedConfig) {
+	static initWithConfig(embeddedConfig, ignoreEthereum) {
 		let object = new ElaphantWeb3Provider(embeddedConfig.rpcUrl)
 		object.isEmbedded = true
 		object.address = embeddedConfig.address
 		object.chainId = embeddedConfig.chainId
-		object.setEthereum()
+		
+		if(!ignoreEthereum){
+			object.setEthereum()
+		}
 
 		return object
 	}
