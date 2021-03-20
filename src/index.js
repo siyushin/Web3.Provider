@@ -92,7 +92,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 			// isEmbedded: this.isEmbedded,
 			on: this.on,
 			enable: function () {
-				console.log("调用window.ethereum.enable()")
+				// console.log("调用window.ethereum.enable()")
 
 				return new Promise((resolve, reject) => {
 					if (this.provider.isEmbedded) {
@@ -132,7 +132,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 				})
 			},
 			request(payload, callback) {
-				console.log("调用window.ethereum.request()", payload, callback)
+				// console.log("调用window.ethereum.request()", payload, callback)
 
 				if (callback) {
 					this.provider.send(payload, callback)
@@ -147,8 +147,8 @@ class ElaphantWeb3Provider extends HttpProvider {
 				}
 			},
 			send: function (method, callback) {
-				console.log("调用window.ethereum.send()", method, callback)
-				console.log("method参数是", typeof method)
+				// console.log("调用window.ethereum.send()", method, callback)
+				// console.log("method参数是", typeof method)
 
 				if (typeof method === "string") {
 					this.provider.send({
@@ -160,7 +160,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 				}
 			},
 			sendAsync: function (payload, callback) {
-				console.log("调用window.ethereum.sendAsync()", payload, callback)
+				// console.log("调用window.ethereum.sendAsync()", payload, callback)
 				this.send(payload, callback)
 			},
 		}
@@ -189,7 +189,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 			|| event === "networkChanged"
 		) {
 			window.eventHandlers.set(event, handler)
-			console.log("注册了事件监听器。", event, handler)
+			// console.log("注册了事件监听器。", event, handler)
 		}
 	}
 
@@ -239,7 +239,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 	}
 
 	send(payload, callback) {
-		console.log("开始调用 send……", this, payload, callback)
+		// console.log("开始调用 send……", this, payload, callback)
 
 		const id = payload.id ? payload.id : new Date().getTime()
 		const params = payload.params ? payload.params : []
@@ -248,7 +248,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 		payload.jsonrpc = "2.0"
 		payload.params = params
 
-		console.log("修正参数：", payload)
+		// console.log("修正参数：", payload)
 
 		if (callback) {
 			window.resCallback.set(id, callback)
@@ -266,11 +266,11 @@ class ElaphantWeb3Provider extends HttpProvider {
 			) {
 				return new Promise(resolve => {
 					window.resCallback.set(id, result => {
-						console.log("最终回调到js的参数：", result)
+						// console.log("最终回调到js的参数：", result)
 						resolve(result)
 					})
 
-					console.log("为没有回调的请求生成回调方法：", window.resCallback)
+					// console.log("为没有回调的请求生成回调方法：", window.resCallback)
 					this._send(payload, id)
 				})
 			} else {
@@ -290,7 +290,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 						// 	window.eventHandlers.get("data")(result)
 						// }
 
-						console.log("最终回调到js的参数：", result)
+						// console.log("最终回调到js的参数：", result)
 						if (result.result) {
 							resolve(result.result)
 						} else {
@@ -300,7 +300,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 						this.asyncDeleteCallback(id)
 					})
 
-					console.log("为没有回调的请求生成回调方法：", window.resCallback)
+					// console.log("为没有回调的请求生成回调方法：", window.resCallback)
 					this._send(payload, id)
 				})
 			}
@@ -308,7 +308,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 	}
 
 	rawSendWithinApp(payload, id) {
-		console.log("组装请求对象 rawSendWithinApp", payload, id)
+		// console.log("组装请求对象 rawSendWithinApp", payload, id)
 
 		let jsBridge
 		if (this.isEmbedded) {
@@ -322,12 +322,12 @@ class ElaphantWeb3Provider extends HttpProvider {
 				jsBridge = window.JsBridgeAndroid
 				jsBridge.postMessage(JSON.stringify(param))
 
-				console.log("提交Android", JSON.stringify(param))
+				// console.log("提交Android", JSON.stringify(param))
 			} else {
 				jsBridge = window.webkit.messageHandlers[payload.method]
 				jsBridge.postMessage(JSON.stringify(param))
 
-				console.log("提交iOS", JSON.stringify(param))
+				// console.log("提交iOS", JSON.stringify(param))
 			}
 		} else {
 			super.send(payload, window.resCallback.get(id))
@@ -335,7 +335,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 	}
 
 	_send(payload, id) {
-		console.log("开始调用 _send……", payload, id)
+		// console.log("开始调用 _send……", payload, id)
 
 		let jsBridge
 		switch (payload.method) {
@@ -349,20 +349,20 @@ class ElaphantWeb3Provider extends HttpProvider {
 				break;
 
 			case "eth_getBalance":
-				console.log("这是一个 eth_getBalance 交易。", payload, id)
+				// console.log("这是一个 eth_getBalance 交易。", payload, id)
 
-				console.log("window.JsBridgeAndroid =", window.JsBridgeAndroid)
+				// console.log("window.JsBridgeAndroid =", window.JsBridgeAndroid)
 				this.rawSendWithinApp(payload, id)
 				break
 
 			case 'eth_sendTransaction':
-				console.log("这是一个eth_sendTransaction交易。", payload.params)
+				// console.log("这是一个eth_sendTransaction交易。", payload.params)
 
 				this.sendTransaction(payload.params, id)
 				break
 
 			case "eth_accounts":
-				console.log("开始调用 eth_accounts：", this.address, this.isEmbedded, id, window.resCallback.get(id).length)
+				// console.log("开始调用 eth_accounts：", this.address, this.isEmbedded, id, window.resCallback.get(id).length)
 
 				if (this.isEmbedded) {
 					const foo = window.resCallback.get(id)
@@ -496,7 +496,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 					this.checkPayload(payload.params[0])
 				}
 
-				console.log(payload.method, "↑↑↑↑↑↑↑↑↑↑交易被传给super……", payload, window.resCallback.get(id))
+				// console.log(payload.method, "↑↑↑↑↑↑↑↑↑↑交易被传给super……", payload, window.resCallback.get(id))
 
 				super.send(payload, window.resCallback.get(id))
 		}
@@ -517,7 +517,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 	}
 
 	sendTransaction(args, id) {
-		console.log("开始调用　sendTransaction", args, id)
+		// console.log("开始调用　sendTransaction", args, id)
 
 		if (this.isEmbedded) {
 			const param = {
@@ -566,7 +566,7 @@ class ElaphantWeb3Provider extends HttpProvider {
 	}
 
 	sendResponse(id, result) {
-		console.log("调用 sendResponse", id, result, this.isEmbedded, window.resCallback.get(id), window.resCallback)
+		// console.log("调用 sendResponse", id, result, this.isEmbedded, window.resCallback.get(id), window.resCallback)
 
 		if (this.isEmbedded && window.resCallback.has(id)) {
 			window.resCallback.get(id)(result)
